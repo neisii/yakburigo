@@ -6,6 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/neisii/yakburigo/config"
+	"github.com/neisii/yakburigo/internal/handler"
+	"github.com/neisii/yakburigo/internal/repository"
+	"github.com/neisii/yakburigo/internal/service"
 	"github.com/neisii/yakburigo/pkg/database"
 )
 
@@ -24,6 +27,11 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	log.Println("Database connected successfully")
+
+	// 의존성 주입
+	locationRepo := repository.NewLocationRepository(db)
+	locationService := service.NewLocationService(locationRepo)
+	locationHandler := handler.NewLocationHandler(locationService)
 
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
@@ -52,6 +60,12 @@ func main() {
 				"message": "pong",
 			})
 		})
+
+		locations := v1.Group("/locations")
+		{
+			locations.GET("/nearby", locationHandler.GetNearbyLocations)
+			locations.GET("/:id", locationHandler.GetLocationByID)
+		}
 	}
 
 	log.Printf("Starting server on port %s...", cfg.Server.Port)
